@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { writeFile, unlink } from 'fs/promises';
+import { createReadStream } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
@@ -60,7 +61,7 @@ export async function transcribeAudio(
 
     // Call Whisper API
     const transcription = await whisperClient.audio.transcriptions.create({
-      file: await import('fs').then(fs => fs.createReadStream(tempFilePath as string)),
+      file: createReadStream(tempFilePath),
       model: 'whisper-1',
       language: 'en', // Can be made configurable
       response_format: 'verbose_json', // Get confidence scores
