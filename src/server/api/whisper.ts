@@ -41,7 +41,7 @@ export function getWhisperClient(): OpenAI | null {
  */
 export async function transcribeAudio(
   audioBuffer: Buffer,
-  format: 'webm' | 'mp3' | 'wav' = 'webm'
+  format: 'webm' | 'mp3' | 'wav' | 'mp4' = 'webm'
 ): Promise<TranscriptionResult> {
   if (!whisperClient) {
     throw new Error('Whisper client not initialized');
@@ -51,7 +51,7 @@ export async function transcribeAudio(
 
   try {
     // Create temporary file for audio (Whisper API requires file input)
-    const fileExtension = format === 'webm' ? 'webm' : format === 'mp3' ? 'mp3' : 'wav';
+    const fileExtension = format === 'mp4' ? 'mp4' : format === 'webm' ? 'webm' : format === 'mp3' ? 'mp3' : 'wav';
     tempFilePath = join(tmpdir(), `whisper-${randomUUID()}.${fileExtension}`);
 
     // Write audio buffer to temp file

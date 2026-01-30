@@ -19,6 +19,12 @@
   --gray-700: #374151;
   --gray-900: #111827;
 
+  /* Additional shades */
+  --blue-50: #EFF6FF;
+  --blue-500: var(--playlab-blue);
+  --red-500: var(--playlab-red);
+  --red-600: #C62828;
+
   /* Semantic colors */
   --primary: var(--playlab-blue);
   --secondary: var(--playlab-teal);
@@ -36,7 +42,7 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--gray-50);
   color: var(--gray-900);
   line-height: 1.6;
   min-height: 100vh;
@@ -114,21 +120,23 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--playlab-blue) 0%, var(--playlab-blue-light) 100%);
+  background: var(--playlab-blue);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
+  background: var(--playlab-blue-light);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(30, 136, 229, 0.3);
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, var(--playlab-teal) 0%, var(--playlab-teal-light) 100%);
+  background: var(--playlab-teal);
   color: white;
 }
 
 .btn-secondary:hover:not(:disabled) {
+  background: var(--playlab-teal-light);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 191, 165, 0.3);
 }
@@ -159,7 +167,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--playlab-teal), var(--playlab-blue), var(--playlab-magenta));
+  background: var(--playlab-blue);
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -234,7 +242,7 @@ body {
   justify-content: center;
   gap: 1.5rem;
   padding: 2rem;
-  background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(0, 191, 165, 0.1));
+  background: rgba(30, 136, 229, 0.05);
   border: 3px solid var(--playlab-teal);
   border-radius: 16px;
   margin-bottom: 1.5rem;
@@ -274,7 +282,7 @@ body {
   height: 120px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, var(--playlab-blue), var(--playlab-teal));
+  background: var(--playlab-blue);
   box-shadow: 0 4px 16px rgba(30, 136, 229, 0.3);
   cursor: pointer;
   display: flex;
@@ -285,6 +293,7 @@ body {
 }
 
 .btn-record-circle:hover:not(:disabled) {
+  background: var(--playlab-blue-light);
   transform: scale(1.05);
   box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
 }
@@ -309,7 +318,7 @@ body {
   justify-content: center;
   gap: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, var(--playlab-red), var(--playlab-orange));
+  background: var(--playlab-red);
   border-radius: 12px;
   color: white;
   margin-bottom: 1.5rem;
@@ -354,14 +363,14 @@ body {
 }
 
 .audio-player.playing {
-  background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(0, 191, 165, 0.1));
+  background: rgba(30, 136, 229, 0.05);
 }
 
 .play-pause-btn {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--playlab-blue), var(--playlab-teal));
+  background: var(--playlab-blue);
   border: none;
   color: white;
   cursor: pointer;
@@ -369,10 +378,11 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .play-pause-btn:hover {
+  background: var(--playlab-blue-light);
   transform: scale(1.1);
 }
 
@@ -463,10 +473,7 @@ body {
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, var(--playlab-blue), var(--playlab-magenta));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--playlab-blue);
 }
 
 .welcome-description {

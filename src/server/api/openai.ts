@@ -41,19 +41,19 @@ export async function generateTemplateWithAI(answers: {
 
 Based on the following interview responses, generate a Playlab.ai prompt that follows this EXACT structure:
 
-Background
+## Background
 You are an expert in [extract from responses].
 Your role is to [extract from responses].
 You are talking to [extract target audience from responses].
 Success looks like [extract from success answer].
 
-Your Workflow
+## Your Workflow
 First, [extract first step from user journey].
 After they respond, then [extract second step].
 Next, [extract third step].
 [Continue for all workflow steps mentioned in the user journey]
 
-Guidelines & Guardrails
+## Guidelines & Guardrails
 Avoid language that might seem judgmental or dismissive.
 Be inclusive in your examples and explanations, consider multiple perspectives, and avoid stereotypes.
 Provide clear and concise responses.
@@ -68,7 +68,9 @@ Q4 (Success outcome): ${answers.q4}
 Q5 (Boundaries): ${answers.q5}
 
 IMPORTANT:
-- Use the EXACT structure shown above
+- Use the EXACT structure shown above with ## markdown headers
+- Output in proper markdown format
+- Use ## for all section headers (Background, Your Workflow, Guidelines & Guardrails)
 - Extract information naturally from the responses
 - For the Workflow section, describe each step in a clear, actionable way
 - Include "First," "After they respond, then," and "Next," for the workflow steps

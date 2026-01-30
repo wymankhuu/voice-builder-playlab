@@ -5,33 +5,33 @@ export const INTERVIEW_QUESTIONS: Question[] = [
   {
     id: 'q1_app_vision',
     order: 1,
-    text: "Tell me about the app you're envisioning. What problem does it solve, and who is it for?",
+    text: "What app are you building and who is it for?",
     voicePrompt:
-      'Hi Im here to help you build a custom AI assistant Lets start Tell me about the app youre envisioning What problem does it solve and who is it for?',
+      'Hi Im here to help you build a custom AI assistant What app are you building and who is it for?',
     extractionHints: ['app', 'problem', 'solve', 'user', 'audience', 'helps', 'for'],
     clarificationPrompts: [
-      'Can you tell me more about the specific pain points your users face?',
-      'What makes your target audience unique?',
+      'What problem does it solve?',
+      'Who is your target audience?',
     ],
   },
   {
     id: 'q2_user_journey',
     order: 2,
-    text: "Describe a typical user's journey through the app. What does their experience look like from start to finish?",
+    text: "Describe the user journey from start to finish.",
     voicePrompt:
-      'Great Now describe a typical users journey through the app What does their experience look like from start to finish?',
+      'Great Describe the user journey from start to finish',
     extractionHints: ['journey', 'experience', 'start', 'finish', 'first', 'then', 'next', 'finally'],
     clarificationPrompts: [
-      'What information does the user provide at the beginning?',
-      'How does the app guide them through each step?',
+      'What happens first?',
+      'What happens next?',
     ],
   },
   {
     id: 'q3_tone_personality',
     order: 3,
-    text: 'What tone, personality, or expertise should the app convey? How should it make users feel?',
+    text: 'What tone and personality should the app have?',
     voicePrompt:
-      'Perfect What tone personality or expertise should the app convey How should it make users feel?',
+      'Perfect What tone and personality should the app have?',
     extractionHints: [
       'tone',
       'personality',
@@ -45,32 +45,32 @@ export const INTERVIEW_QUESTIONS: Question[] = [
       'empathetic',
     ],
     clarificationPrompts: [
-      'Are there specific experts or styles you want the app to emulate?',
-      'What emotional response do you want users to have?',
+      'How should it make users feel?',
+      'Any specific style to emulate?',
     ],
   },
   {
     id: 'q4_success_outcome',
     order: 4,
-    text: 'What would success look like for this app? If users walked away having accomplished one thing, what would it be?',
+    text: 'What should users accomplish with this app?',
     voicePrompt:
-      'Excellent What would success look like for this app If users walked away having accomplished one thing what would it be?',
+      'Excellent What should users accomplish with this app?',
     extractionHints: ['success', 'accomplish', 'achieve', 'goal', 'outcome', 'result'],
     clarificationPrompts: [
-      'How will users know theyve gotten value from the app?',
-      'What specific outcome should they be able to achieve?',
+      'What is the main goal?',
+      'What outcome should they achieve?',
     ],
   },
   {
     id: 'q5_boundaries',
     order: 5,
-    text: 'Are there any boundaries or things the app should avoid doing or suggesting?',
+    text: 'What should the app avoid or not do?',
     voicePrompt:
-      'Finally are there any boundaries or things the app should avoid doing or suggesting?',
+      'Finally What should the app avoid or not do?',
     extractionHints: ['boundaries', 'avoid', 'not', 'dont', 'shouldnt', 'never', 'restrict', 'limit'],
     clarificationPrompts: [
-      'How should the app handle off-topic requests?',
-      'Are there any compliance or ethical concerns to consider?',
+      'Any topics to avoid?',
+      'Any restrictions to consider?',
     ],
   },
 ];
@@ -81,8 +81,8 @@ export const CONFIRMATION_PROMPT = (paraphrase: string): string =>
 
 // Welcome message
 export const WELCOME_MESSAGE =
-  'Welcome to Voice Builder for Playlab I will ask you 5 questions to help design your custom AI assistant This should take about 3 minutes Ready to begin';
+  'Welcome to Voice Builder Ill ask 5 quick questions to design your custom AI assistant Ready';
 
 // Completion message
 export const COMPLETION_MESSAGE =
-  'Great I have all the information I need Let me generate your custom AI assistant template for Playlab This will just take a moment';
+  'Perfect Generating your AI assistant template now';

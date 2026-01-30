@@ -27,13 +27,6 @@ if (whisperEnabled) {
   console.log('[Server] Whisper disabled, using browser-based speech recognition');
 }
 
-// Map to track audio chunks per session
-interface AudioChunkBuffer {
-  chunks: Buffer[];
-  lastProcessed: Date;
-}
-const audioChunkBuffers = new Map<string, AudioChunkBuffer>();
-
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -284,10 +277,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle audio chunk for Whisper transcription
+  // Handle complete audio for Whisper transcription
   socket.on(
-    'interview:audio-chunk',
-    async (data: { questionIndex: number; audioChunk: ArrayBuffer; format: string; isLastChunk: boolean }) => {
+    'interview:audio-complete',
+    async (data: { questionIndex: number; audioData: ArrayBuffer; format: string }) => {
       if (!sessionId) {
         socket.emit('interview:error', {
           message: 'No active session',
@@ -309,68 +302,57 @@ io.on('connection', (socket) => {
           return;
         }
 
-        // Initialize buffer for this session if not exists
-        if (!audioChunkBuffers.has(sessionId)) {
-          audioChunkBuffers.set(sessionId, {
-            chunks: [],
-            lastProcessed: new Date(),
+        // Convert ArrayBuffer to Buffer
+        const audioBuffer = Buffer.from(data.audioData);
+
+        console.log(
+          `[Socket] Processing complete audio (${audioBuffer.length} bytes, format: ${data.format}) for question ${data.questionIndex}`
+        );
+
+        // Minimum buffer size for valid audio (8KB = ~0.5 seconds)
+        const MIN_AUDIO_SIZE = 8000;
+
+        if (audioBuffer.length < MIN_AUDIO_SIZE) {
+          console.log(`[Socket] Audio too short (${audioBuffer.length} bytes), falling back to Web Speech API`);
+
+          socket.emit('interview:transcription', {
+            questionIndex: data.questionIndex,
+            transcript: null,
+            confidence: 0,
+            provider: 'web-speech',
+            useFallback: true,
+            error: 'Audio too short, using browser speech recognition',
+          });
+          return;
+        }
+
+        try {
+          // Transcribe with Whisper
+          const result = await transcribeAudio(audioBuffer, data.format as 'webm' | 'mp3' | 'wav' | 'mp4');
+
+          // Send transcription back to client
+          socket.emit('interview:transcription', {
+            questionIndex: data.questionIndex,
+            transcript: result.transcript,
+            confidence: result.confidence,
+            provider: 'whisper',
+            language: result.language,
+          });
+        } catch (error: any) {
+          console.error('[Socket] Whisper transcription error:', error.message);
+
+          // Emit fallback instruction
+          socket.emit('interview:transcription', {
+            questionIndex: data.questionIndex,
+            transcript: null,
+            confidence: 0,
+            provider: 'web-speech',
+            useFallback: true,
+            error: 'Transcription failed, using browser speech recognition',
           });
         }
-
-        const buffer = audioChunkBuffers.get(sessionId)!;
-
-        // Convert ArrayBuffer to Buffer and add to chunks
-        const chunk = Buffer.from(data.audioChunk);
-        buffer.chunks.push(chunk);
-
-        const now = new Date();
-        const timeSinceLastProcess = now.getTime() - buffer.lastProcessed.getTime();
-        const shouldProcess = data.isLastChunk || timeSinceLastProcess >= 2000;
-
-        if (shouldProcess && buffer.chunks.length > 0) {
-          // Concatenate all chunks
-          const completeAudio = Buffer.concat(buffer.chunks);
-
-          console.log(
-            `[Socket] Processing ${buffer.chunks.length} audio chunks (${completeAudio.length} bytes) for question ${data.questionIndex}`
-          );
-
-          try {
-            // Transcribe with Whisper
-            const result = await transcribeAudio(completeAudio, data.format as 'webm' | 'mp3' | 'wav');
-
-            // Send transcription back to client
-            socket.emit('interview:transcription', {
-              questionIndex: data.questionIndex,
-              transcript: result.transcript,
-              confidence: result.confidence,
-              provider: 'whisper',
-              language: result.language,
-            });
-
-            // Clear chunks and update last processed time
-            buffer.chunks = [];
-            buffer.lastProcessed = now;
-          } catch (error: any) {
-            console.error('[Socket] Whisper transcription error:', error.message);
-
-            // Emit fallback instruction
-            socket.emit('interview:transcription', {
-              questionIndex: data.questionIndex,
-              transcript: null,
-              confidence: 0,
-              provider: 'web-speech',
-              useFallback: true,
-              error: 'Transcription failed, using browser speech recognition',
-            });
-
-            // Clear chunks for retry
-            buffer.chunks = [];
-            buffer.lastProcessed = now;
-          }
-        }
       } catch (error) {
-        console.error('[Socket] Error handling audio chunk:', error);
+        console.error('[Socket] Error handling audio:', error);
         socket.emit('interview:error', {
           message: 'Failed to process audio',
           recoverable: true,
@@ -383,9 +365,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`[Socket] Client disconnected: ${socket.id}`);
     if (sessionId) {
-      // Clean up audio chunk buffer
-      audioChunkBuffers.delete(sessionId);
-
       // Clean up session after a delay (in case user reconnects)
       setTimeout(() => {
         if (sessionId) {
