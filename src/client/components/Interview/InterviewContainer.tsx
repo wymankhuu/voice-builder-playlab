@@ -6,7 +6,7 @@ import ProgressIndicator from './ProgressIndicator';
 import TemplatePreview from '../Template/TemplatePreview';
 
 interface InterviewContainerProps {
-  onComplete: () => void;
+  onComplete: (template: string) => void;
   onRestart: () => void;
 }
 
@@ -90,8 +90,38 @@ function InterviewContainer({ onComplete, onRestart }: InterviewContainerProps) 
       console.log('[Client] Template generated');
       setTemplate(data.formattedTemplate);
       setState('complete');
-      onComplete();
+      onComplete(data.formattedTemplate);
     });
+
+    socket.on(
+      'interview:transcription',
+      (data: {
+        questionIndex: number;
+        transcript: string | null;
+        confidence: number;
+        provider: 'whisper' | 'web-speech';
+        language?: string;
+        useFallback?: boolean;
+        error?: string;
+      }) => {
+        console.log('[Client] Received transcription:', data);
+
+        if (data.useFallback) {
+          console.log('Using Web Speech API fallback');
+          return; // Web Speech already providing transcripts
+        }
+
+        if (data.transcript && currentQuestion?.questionIndex === data.questionIndex) {
+          // Replace interim Web Speech transcript with Whisper result
+          console.log(`[Client] Updating transcript with Whisper (confidence: ${data.confidence})`);
+          setTranscript(data.transcript);
+        }
+
+        if (data.error) {
+          console.warn('[Client] Transcription error:', data.error);
+        }
+      }
+    );
 
     socket.on('interview:error', (data: { message: string; recoverable: boolean }) => {
       console.error('[Client] Error:', data.message);
@@ -307,7 +337,12 @@ function InterviewContainer({ onComplete, onRestart }: InterviewContainerProps) 
             )}
           </div>
 
-          <VoiceRecorder onTranscriptComplete={handleTranscriptComplete} disabled={!audioFinished} />
+          <VoiceRecorder
+            onTranscriptComplete={handleTranscriptComplete}
+            disabled={!audioFinished}
+            socket={socketRef.current}
+            questionIndex={currentQuestion.questionIndex}
+          />
 
           {transcript && (
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>

@@ -51,10 +51,24 @@ export interface InterviewEvents {
   'interview:answer': (audioBlob: Blob, transcript: string) => void;
   'interview:confirm': (questionId: string, confirmed: boolean) => void;
   'interview:edit': (questionId: string) => void;
+  'interview:audio-chunk': (data: {
+    questionIndex: number;
+    audioChunk: ArrayBuffer;
+    format: 'webm' | 'mp3' | 'wav';
+    isLastChunk: boolean;
+  }) => void;
 
   // Server → Client
   'interview:question': (data: { questionId: string; text: string; audio: ArrayBuffer }) => void;
-  'interview:transcription': (data: { questionId: string; transcript: string; confidence: number }) => void;
+  'interview:transcription': (data: {
+    questionIndex: number;
+    transcript: string | null;
+    confidence: number;
+    provider: 'whisper' | 'web-speech';
+    language?: string;
+    useFallback?: boolean;
+    error?: string;
+  }) => void;
   'interview:clarification': (data: { questionId: string; text: string; audio?: ArrayBuffer }) => void;
   'interview:progress': (data: { current: number; total: number }) => void;
   'interview:error': (error: { message: string; recoverable: boolean }) => void;

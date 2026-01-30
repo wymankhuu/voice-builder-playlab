@@ -4,12 +4,35 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeElevenLabs, getElevenLabsClient } from './api/elevenlabs.js';
+import { initializeOpenAI } from './api/openai.js';
+import { initializeWhisper, transcribeAudio } from './api/whisper.js';
 import { interviewService } from './services/interviewService.js';
 import { templateGenerator } from './services/templateGenerator.js';
 import { INTERVIEW_QUESTIONS, WELCOME_MESSAGE, COMPLETION_MESSAGE } from '../shared/constants/questions.js';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize OpenAI client
+initializeOpenAI();
+
+// Initialize Whisper if enabled
+const enableWhisper = process.env.ENABLE_WHISPER === 'true';
+const whisperEnabled = enableWhisper && process.env.OPENAI_API_KEY;
+
+if (whisperEnabled) {
+  initializeWhisper();
+  console.log('[Server] Whisper speech-to-text initialized');
+} else {
+  console.log('[Server] Whisper disabled, using browser-based speech recognition');
+}
+
+// Map to track audio chunks per session
+interface AudioChunkBuffer {
+  chunks: Buffer[];
+  lastProcessed: Date;
+}
+const audioChunkBuffers = new Map<string, AudioChunkBuffer>();
 
 const app = express();
 const httpServer = createServer(app);
@@ -235,7 +258,7 @@ io.on('connection', (socket) => {
 
         // Generate template
         const responses = interviewService.getAllResponses(sessionId);
-        const result = templateGenerator.generateTemplate({
+        const result = await templateGenerator.generateTemplate({
           sessionId,
           responses,
         });
@@ -261,10 +284,108 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle audio chunk for Whisper transcription
+  socket.on(
+    'interview:audio-chunk',
+    async (data: { questionIndex: number; audioChunk: ArrayBuffer; format: string; isLastChunk: boolean }) => {
+      if (!sessionId) {
+        socket.emit('interview:error', {
+          message: 'No active session',
+          recoverable: false,
+        });
+        return;
+      }
+
+      try {
+        // Check if Whisper is enabled
+        if (!whisperEnabled) {
+          socket.emit('interview:transcription', {
+            questionIndex: data.questionIndex,
+            transcript: null,
+            confidence: 0,
+            provider: 'web-speech',
+            useFallback: true,
+          });
+          return;
+        }
+
+        // Initialize buffer for this session if not exists
+        if (!audioChunkBuffers.has(sessionId)) {
+          audioChunkBuffers.set(sessionId, {
+            chunks: [],
+            lastProcessed: new Date(),
+          });
+        }
+
+        const buffer = audioChunkBuffers.get(sessionId)!;
+
+        // Convert ArrayBuffer to Buffer and add to chunks
+        const chunk = Buffer.from(data.audioChunk);
+        buffer.chunks.push(chunk);
+
+        const now = new Date();
+        const timeSinceLastProcess = now.getTime() - buffer.lastProcessed.getTime();
+        const shouldProcess = data.isLastChunk || timeSinceLastProcess >= 2000;
+
+        if (shouldProcess && buffer.chunks.length > 0) {
+          // Concatenate all chunks
+          const completeAudio = Buffer.concat(buffer.chunks);
+
+          console.log(
+            `[Socket] Processing ${buffer.chunks.length} audio chunks (${completeAudio.length} bytes) for question ${data.questionIndex}`
+          );
+
+          try {
+            // Transcribe with Whisper
+            const result = await transcribeAudio(completeAudio, data.format as 'webm' | 'mp3' | 'wav');
+
+            // Send transcription back to client
+            socket.emit('interview:transcription', {
+              questionIndex: data.questionIndex,
+              transcript: result.transcript,
+              confidence: result.confidence,
+              provider: 'whisper',
+              language: result.language,
+            });
+
+            // Clear chunks and update last processed time
+            buffer.chunks = [];
+            buffer.lastProcessed = now;
+          } catch (error: any) {
+            console.error('[Socket] Whisper transcription error:', error.message);
+
+            // Emit fallback instruction
+            socket.emit('interview:transcription', {
+              questionIndex: data.questionIndex,
+              transcript: null,
+              confidence: 0,
+              provider: 'web-speech',
+              useFallback: true,
+              error: 'Transcription failed, using browser speech recognition',
+            });
+
+            // Clear chunks for retry
+            buffer.chunks = [];
+            buffer.lastProcessed = now;
+          }
+        }
+      } catch (error) {
+        console.error('[Socket] Error handling audio chunk:', error);
+        socket.emit('interview:error', {
+          message: 'Failed to process audio',
+          recoverable: true,
+        });
+      }
+    }
+  );
+
   // Handle disconnect
   socket.on('disconnect', () => {
     console.log(`[Socket] Client disconnected: ${socket.id}`);
     if (sessionId) {
+      // Clean up audio chunk buffer
+      audioChunkBuffers.delete(sessionId);
+
       // Clean up session after a delay (in case user reconnects)
       setTimeout(() => {
         if (sessionId) {

@@ -13,6 +13,7 @@ import {
   COMMON_USER_MEMORY_FIELDS,
   CONVERSATION_RULE_TEMPLATES,
 } from '../../shared/constants/playlabFeatures';
+import { generateTemplateWithAI } from '../api/openai';
 
 /**
  * Template Generator Service
@@ -22,28 +23,57 @@ export class TemplateGenerator {
   /**
    * Generate complete Playlab.ai template from interview responses
    */
-  generateTemplate(request: TemplateGenerationRequest): TemplateGenerationResponse {
+  async generateTemplate(request: TemplateGenerationRequest): Promise<TemplateGenerationResponse> {
     try {
       const { responses } = request;
 
-      // Extract data from each question
-      const q1 = responses[1]?.answer || '';
-      const q2 = responses[2]?.answer || '';
-      const q3 = responses[3]?.answer || '';
-      const q4 = responses[4]?.answer || '';
-      const q5 = responses[5]?.answer || '';
+      // Extract answers from responses (question indices are 0-4, stored as 1-5)
+      const q1 = responses[0]?.answer || '';
+      const q2 = responses[1]?.answer || '';
+      const q3 = responses[2]?.answer || '';
+      const q4 = responses[3]?.answer || '';
+      const q5 = responses[4]?.answer || '';
 
-      // Build template structure
+      // Use OpenAI to generate the template
+      const formattedTemplate = await generateTemplateWithAI({
+        q1,
+        q2,
+        q3,
+        q4,
+        q5,
+      });
+
+      // Build minimal template structure for compatibility
       const template: PlaylabTemplate = {
-        background: this.generateBackground(q1, q2),
-        workflow: this.generateWorkflow(q3),
-        conversationRules: this.generateConversationRules(q4),
-        guidelines: this.generateGuidelines(q5),
-        recommendations: this.generateRecommendations(q3, q5, q1),
+        background: {
+          expertise: '',
+          role: '',
+          targetAudience: '',
+        },
+        workflow: {
+          steps: [],
+        },
+        conversationRules: {
+          tone: '',
+          style: '',
+          structure: [],
+        },
+        guidelines: {
+          boundaries: [],
+          limitations: [],
+          requirements: [],
+          defaultGuidelines: DEFAULT_GUIDELINES,
+        },
+        recommendations: {
+          model: 'Claude 3.7 Sonnet',
+          knowledgeFileTypes: [],
+          starterInputs: [],
+          appName: '',
+          appDescription: '',
+          userMemory: { enabled: true, trackingFields: [] },
+          successOutcome: '',
+        },
       };
-
-      // Format template as markdown
-      const formattedTemplate = this.formatTemplateAsMarkdown(template);
 
       return {
         success: true,
@@ -130,7 +160,7 @@ export class TemplateGenerator {
   /**
    * Generate Recommendations (model, knowledge files, inputs, etc.)
    */
-  private generateRecommendations(workflowAnswer: string, boundariesAnswer: string, roleAnswer: string) {
+  private generateRecommendations(workflowAnswer: string, boundariesAnswer: string, roleAnswer: string, successAnswer: string) {
     const complexity = this.analyzeWorkflowComplexity(workflowAnswer);
     const model = this.recommendModel(complexity, roleAnswer);
     const knowledgeFileTypes = this.recommendKnowledgeFiles(boundariesAnswer);
@@ -138,6 +168,7 @@ export class TemplateGenerator {
     const appName = this.generateAppName(roleAnswer);
     const appDescription = this.generateAppDescription(roleAnswer, workflowAnswer);
     const userMemory = this.recommendUserMemory(roleAnswer);
+    const successOutcome = successAnswer || '**[Define what success looks like for users]**';
 
     return {
       model,
@@ -146,6 +177,7 @@ export class TemplateGenerator {
       appName,
       appDescription,
       userMemory,
+      successOutcome,
     };
   }
 
@@ -460,103 +492,43 @@ export class TemplateGenerator {
    * Format template as markdown string
    */
   private formatTemplateAsMarkdown(template: PlaylabTemplate): string {
-    let markdown = `# ${template.recommendations.appName}\n\n`;
-    markdown += `${template.recommendations.appDescription}\n\n`;
-    markdown += `---\n\n`;
+    let markdown = '';
 
     // Background
-    markdown += `## Background\n\n`;
-    markdown += `**Expertise:** ${template.background.expertise}\n\n`;
-    markdown += `**Role:** ${template.background.role}\n\n`;
-    markdown += `**Target Audience:** ${template.background.targetAudience}\n\n`;
-    markdown += `---\n\n`;
+    markdown += `Background\n`;
+    markdown += `You are an expert in ${template.background.expertise}.\n`;
+    markdown += `Your role is to ${template.background.role}.\n`;
+    markdown += `You are talking to ${template.background.targetAudience}.\n`;
+    markdown += `Success looks like ${template.recommendations.successOutcome}.\n\n`;
 
     // Workflow
-    markdown += `## Workflow\n\n`;
-    template.workflow.steps.forEach((step) => {
-      markdown += `### Step ${step.stepNumber}: ${step.description}\n\n`;
-      step.subBullets.forEach((bullet) => {
-        markdown += `- ${bullet}\n`;
-      });
-      if (step.questions && step.questions.length > 0) {
-        step.questions.forEach((q) => {
-          markdown += `  - ${q}\n`;
-        });
+    markdown += `Your Workflow\n`;
+    template.workflow.steps.forEach((step, index) => {
+      if (index === 0) {
+        markdown += `First, ${step.description.toLowerCase()}.\n`;
+      } else if (index === 1) {
+        markdown += `After they respond, then ${step.description.toLowerCase()}.\n`;
+      } else if (index === template.workflow.steps.length - 1) {
+        markdown += `Finally, ${step.description.toLowerCase()}.\n`;
+      } else {
+        markdown += `Next, ${step.description.toLowerCase()}.\n`;
       }
-      markdown += `\n`;
     });
-    markdown += `---\n\n`;
-
-    // Formatting and Conversation Rules
-    markdown += `## Formatting and Conversation Rules\n\n`;
-    markdown += `**Tone:** ${template.conversationRules.tone}\n\n`;
-    markdown += `**Style:** ${template.conversationRules.style}\n\n`;
-    markdown += `**Structure Guidelines:**\n`;
-    template.conversationRules.structure.forEach((rule) => {
-      markdown += `- ${rule}\n`;
-    });
-    markdown += `\n---\n\n`;
+    markdown += `\n`;
 
     // Guidelines & Guardrails
-    markdown += `## Guidelines & Guardrails\n\n`;
-    markdown += `### Default Guidelines\n`;
-    template.guidelines.defaultGuidelines.forEach((guideline) => {
-      markdown += `- ${guideline}\n`;
-    });
-    markdown += `\n### Boundaries\n`;
-    template.guidelines.boundaries.forEach((boundary) => {
-      markdown += `- ${boundary}\n`;
-    });
-    if (template.guidelines.limitations.length > 0) {
-      markdown += `\n### Limitations\n`;
-      template.guidelines.limitations.forEach((limitation) => {
-        markdown += `- ${limitation}\n`;
+    markdown += `Guidelines & Guardrails\n`;
+    markdown += `Avoid language that might seem judgmental or dismissive.\n`;
+    markdown += `Be inclusive in your examples and explanations, consider multiple perspectives, and avoid stereotypes.\n`;
+    markdown += `Provide clear and concise responses.\n`;
+    markdown += `If off-topic, prompt users to return to the main subject.\n`;
+
+    // Add custom boundaries if any
+    if (template.guidelines.boundaries.length > 0) {
+      template.guidelines.boundaries.forEach((boundary) => {
+        markdown += `${boundary}\n`;
       });
     }
-    if (template.guidelines.requirements.length > 0) {
-      markdown += `\n### Requirements\n`;
-      template.guidelines.requirements.forEach((req) => {
-        markdown += `- ${req}\n`;
-      });
-    }
-    markdown += `\n---\n\n`;
-
-    // Recommended Model
-    markdown += `## Recommended Model\n\n`;
-    markdown += `**${template.recommendations.model}**\n\n`;
-    const modelInfo = MODEL_CHARACTERISTICS[template.recommendations.model];
-    if (modelInfo) {
-      markdown += `*Best for: ${modelInfo.bestFor.join(', ')}*\n\n`;
-    }
-    markdown += `---\n\n`;
-
-    // Recommended Knowledge Files
-    markdown += `## Recommended Knowledge Files\n\n`;
-    template.recommendations.knowledgeFileTypes.forEach((fileType) => {
-      markdown += `- ${fileType}\n`;
-    });
-    markdown += `\n---\n\n`;
-
-    // Recommended Starter Inputs
-    markdown += `## Recommended Starter Inputs\n\n`;
-    template.recommendations.starterInputs.forEach((input, index) => {
-      markdown += `### ${index + 1}. ${input.label} (${input.type})\n`;
-      if (input.placeholder) {
-        markdown += `- Placeholder: "${input.placeholder}"\n`;
-      }
-      if (input.options) {
-        markdown += `- Options: ${input.options.join(', ')}\n`;
-      }
-      markdown += `- Required: ${input.required ? 'Yes' : 'No'}\n\n`;
-    });
-    markdown += `---\n\n`;
-
-    // User Memory
-    markdown += `## Recommended User Memory\n\n`;
-    markdown += `**Track between sessions:**\n`;
-    template.recommendations.userMemory.trackingFields.forEach((field) => {
-      markdown += `- ${field}\n`;
-    });
     markdown += `\n---\n\n`;
     markdown += `*Generated by Voice Builder for Playlab.ai*\n`;
 

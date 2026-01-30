@@ -5,7 +5,7 @@ export const INTERVIEW_QUESTIONS: Question[] = [
   {
     id: 'q1_app_vision',
     order: 1,
-    text: 'Tell me about the app you're envisioning. What problem does it solve, and who is it for?',
+    text: "Tell me about the app you're envisioning. What problem does it solve, and who is it for?",
     voicePrompt:
       'Hi Im here to help you build a custom AI assistant Lets start Tell me about the app youre envisioning What problem does it solve and who is it for?',
     extractionHints: ['app', 'problem', 'solve', 'user', 'audience', 'helps', 'for'],
@@ -17,7 +17,7 @@ export const INTERVIEW_QUESTIONS: Question[] = [
   {
     id: 'q2_user_journey',
     order: 2,
-    text: 'Describe a typical user's journey through the app. What does their experience look like from start to finish?',
+    text: "Describe a typical user's journey through the app. What does their experience look like from start to finish?",
     voicePrompt:
       'Great Now describe a typical users journey through the app What does their experience look like from start to finish?',
     extractionHints: ['journey', 'experience', 'start', 'finish', 'first', 'then', 'next', 'finally'],
